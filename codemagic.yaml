@@ -1,83 +1,24 @@
-
-
 workflows:
-
-  my-workflow:
-
-    name: My workflow name
-
-    labels:
-
-      - QA
-
-      - ${TENANT_NAME}
-
-    instance_type: mac_mini_m2
-
-    max_build_duration: 60
-
-    inputs: # more information about build inputs:https://docs.codemagic.io/knowledge-codemagic/build-inputs/
-
-      name: # input ID
-
-        description: Input description
-
-        default: Codemagic
-
+  ios-hotspot-plus:
+    name: Hotspot Plus iOS Build
+    instance_type: mac_mini_m1
     environment:
-
-      groups:
-
-        - group_name
-
       vars:
-
-        PUBLIC_ENV_VAR: "value here"
-
-      flutter: stable
-
+        BUNDLE_ID: "com.hotspotplus.app"
       xcode: latest
-
-    cache:
-
-      cache_paths:
-
-        - ~/.pub-cache
-
-    triggering:
-
-      events:
-
-        - push
-
-      branch_patterns:
-
-        - pattern: '*'
-
-          include: true
-
-          source: true
-
-      cancel_previous_builds: false
-
     scripts:
-
-      - echo "Hello, ${{ inputs.name }}"
-
-      - ...
-
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Update Capacitor iOS
+        script: |
+          npx cap update ios
+      - name: Build iOS App
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Release clean archive -archivePath build/App.xcarchive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          mkdir -p build/ios/ipa
+          xcrun xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build/ios/ipa -exportOptionsPlist ExportOptions.plist || true
     artifacts:
-
-      - build/**/outputs/bundle/**/*.aab
-
-    publishing:
-
-      email:
-
-        recipients:
-
-          - name@example.com
-
-      scripts:
-
-        - echo 'Post-publish script'
+      - build/ios/ipa/**/*.ipa
+      - ios/App/build/App.xcarchive

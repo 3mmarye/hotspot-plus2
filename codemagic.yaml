@@ -1,41 +1,99 @@
 workflows:
-  ios-hotspot-plus:
-    name: HOTSPOT PLUS iOS Build
-    instance_type: mac_mini_m1
+  ios-hotspot-plus-unsigned:
+    name: HOTSPOT PLUS iOS Unsigned IPA
+    instance_type: mac_mini_m2
     max_build_duration: 60
+
     environment:
       node: 22
       xcode: latest
       cocoapods: default
+
       vars:
         BUNDLE_ID: "com.hotspotplus.app"
         APP_NAME: "HOTSPOT PLUS"
-        DEVELOPMENT_TEAM: ""
+
     scripts:
+      - name: Check Node.js version
+        script: |
+          node --version
+          npm --version
+
       - name: Install npm dependencies
         script: |
           npm install --legacy-peer-deps
+
       - name: Build Web Application
         script: |
           npm run build
+
       - name: Capacitor Sync iOS
         script: |
           npx cap sync ios
+
+      - name: Fix iOS Storyboards
+        script: |
+          set -e
+          mkdir -p ios/App/App/Base.lproj
+
+          if [ -f "ios/App/App/LaunchScreen.storyboard" ]; then
+            cp "ios/App/App/LaunchScreen.storyboard" "ios/App/App/Base.lproj/LaunchScreen.storyboard"
+          fi
+
+          if [ -f "ios/App/App/Main.storyboard" ]; then
+            cp "ios/App/App/Main.storyboard" "ios/App/App/Base.lproj/Main.storyboard"
+          fi
+
+          ls -la ios/App/App/Base.lproj
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
-          pod repo update || true
           pod install
-      - name: Build iOS Application & Package Unsigned IPA
+
+      - name: Archive iOS app without code signing
         script: |
-          xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
-            --scheme "App" \
-            --config Release
+          set -e
+
+          rm -rf build
+          mkdir -p build/ios/ipa
+
+          xcodebuild archive \
+            -workspace "ios/App/App.xcworkspace" \
+            -scheme "App" \
+            -configuration Release \
+            -archivePath "$PWD/build/App.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        script: |
+          set -e
+
+          APP_PATH="build/App.xcarchive/Products/Applications/App.app"
+
+          test -d "$APP_PATH"
+
+          rm -rf build/ios/ipa/Payload
+          mkdir -p build/ios/ipa/Payload
+
+          cp -R "$APP_PATH" build/ios/ipa/Payload/
+
+          cd build/ios/ipa
+
+          zip -qry "HOTSPOT-PLUS-unsigned.ipa" Payload
+
+          rm -rf Payload
+
+          ls -lh HOTSPOT-PLUS-unsigned.ipa
+
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/App.xcarchive/dSYMs/**/*.dSYM
       - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Logs/Gym/*.log
+      - $HOME/Library/Logs/*.log
+
     publishing:
       email:
         recipients:
@@ -43,4 +101,3 @@ workflows:
         notify:
           success: true
           failure: true
-

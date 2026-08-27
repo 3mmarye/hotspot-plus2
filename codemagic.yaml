@@ -1,24 +1,20 @@
 workflows:
   ios-hotspot-plus:
-    name: Hotspot Plus iOS Build
-    instance_type: mac_mini_m1
+    name: Hotspot Plus iOS
     environment:
-      vars:
-        BUNDLE_ID: "com.hotspotplus.app"
       xcode: latest
     scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-      - name: Update Capacitor iOS
-        script: |
-          npx cap update ios
-      - name: Build iOS App
-        script: |
-          cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Release clean archive -archivePath build/App.xcarchive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-          mkdir -p build/ios/ipa
-          xcrun xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build/ios/ipa -exportOptionsPlist ExportOptions.plist || true
+      - name: Install
+        script: npm install
+      - name: Build
+        script: npm run build
+      - name: Sync
+        script: npx cap sync ios
+      - name: Pods
+        script: cd ios/App && pod install --repo-update
+      - name: Archive
+        script: xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath "$CM_BUILD_DIR/HotspotPlus.xcarchive" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+      - name: IPA
+        script: mkdir -p "$CM_BUILD_DIR/Payload" && cp -R "$CM_BUILD_DIR/HotspotPlus.xcarchive/Products/Applications/App.app" "$CM_BUILD_DIR/Payload/App.app" && cd "$CM_BUILD_DIR" && zip -qry HotspotPlus.ipa Payload
     artifacts:
-      - build/ios/ipa/**/*.ipa
-      - ios/App/build/App.xcarchive
+      - "$CM_BUILD_DIR/HotspotPlus.ipa"

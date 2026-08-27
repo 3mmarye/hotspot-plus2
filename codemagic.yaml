@@ -1,0 +1,46 @@
+workflows:
+  ios-hotspot-plus:
+    name: HOTSPOT PLUS iOS Build
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    environment:
+      node: 22
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.hotspotplus.app"
+        APP_NAME: "HOTSPOT PLUS"
+        DEVELOPMENT_TEAM: ""
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Build Web Application
+        script: |
+          npm run build
+      - name: Capacitor Sync iOS
+        script: |
+          npx cap sync ios
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App
+          pod repo update || true
+          pod install
+      - name: Build iOS Application & Package Unsigned IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App" \
+            --config Release
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Logs/Gym/*.log
+    publishing:
+      email:
+        recipients:
+          - mjrmiky@gmail.com
+        notify:
+          success: true
+          failure: true
+

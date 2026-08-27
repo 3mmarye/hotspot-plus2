@@ -1,0 +1,10 @@
+{
+  "name": "HOTSPOT PLUS",
+  "description": "تطبيق iOS احترافي لتعديل وتصميم صفحات MikroTik Hotspot للمطور عمار أحمد",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

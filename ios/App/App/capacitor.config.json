@@ -1,0 +1,6 @@
+{
+	"appId": "com.hotspotplus.app",
+	"appName": "HOTSPOT PLUS",
+	"webDir": "dist",
+	"bundledWebRuntime": false
+}

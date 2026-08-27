@@ -1,6 +1,6 @@
 workflows:
   ios-hotspot-plus:
-    name: Build Hotspot Plus iOS IPA
+    name: Build Unsigned Hotspot Plus IPA
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -18,7 +18,7 @@ workflows:
           npx cap sync ios
           cd ios/App
           pod install
-      - name: Build iOS Archive and IPA
+      - name: Build iOS Archive Without Signing
         script: |
           cd ios/App
           xcodebuild -workspace App.xcworkspace \
@@ -26,15 +26,22 @@ workflows:
             -configuration Release \
             -sdk iphoneos \
             -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
             archive
-            
-          xcodebuild -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath build/ipa
+      - name: Generate Final IPA File
+        script: |
+          cd ios/App
+          # تجهيز مجلد Payload الخاص بالـ IPA
+          mkdir -p payload_dir/Payload
+          
+          # نسخ التطبيق المبني بداخله
+          cp -r build/App.xcarchive/Products/Applications/App.app payload_dir/Payload/
+          
+          # ضغط المجلد بصيغة IPA حقيقية وبالاسم المطلوب
+          cd payload_dir
+          zip -r ../build/HotspotPlus.ipa Payload
+          cd ../..
     artifacts:
-      - ios/App/build/ipa/*.ipa
-    publishing:
-      email:
-        recipients:
-          - user@example.com
+      - ios/App/build/*.ipa
